@@ -1,9 +1,9 @@
 import { useState } from "react";
 
-import Sidebar from "../components/Sidebar";
-import MobileNavbar from "../components/MobileNavbar";
-import Header from "../components/Header";
-import CategoryCard from "../components/CategoryCard";
+import Sidebar from "../componets/Sidebar";
+import MobileNavbar from "../componets/MobileNavbar";
+import Header from "../componets/Header";
+import CategoryCard from "../componets/CategoryCard";
 
 import {
   Droplets,
