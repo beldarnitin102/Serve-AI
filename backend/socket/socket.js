@@ -15,14 +15,22 @@ export const initSocket = (server) => {
   io.on('connection', (socket) => {
     console.log('✅ Socket connected:', socket.id);
 
-    socket.on('join', (userId) => {
+    socket.on('join', (payload) => {
+      const userId = typeof payload === 'string' ? payload : payload?.userId;
+      const role = typeof payload === 'string' ? null : payload?.role;
+      if (!userId) return;
+
       connectedUsers.set(userId, socket.id);
       socket.join(userId);
       console.log(`👤 User ${userId} joined their private room`);
 
+      if (role === 'worker') {
+        socket.join('workers');
+        console.log(`🔧 Worker ${userId} joined shared worker room`);
+      }
+
       // Special room for admins
-      // In real app, verify role from token
-      if (userId === 'admin' || userId.includes('admin')) {
+      if (userId === 'admin' || userId?.includes('admin')) {
         socket.join('admin');
         console.log('👑 Admin joined live monitoring room');
       }

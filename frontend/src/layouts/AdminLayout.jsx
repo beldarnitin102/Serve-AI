@@ -96,7 +96,6 @@ const AdminLayout = () => {
                 <p className="text-xs text-slate-400 truncate">Administrator</p>
               </div>
             </div>
-            {/* Temporarily disabled Logout
             <button
               onClick={handleLogout}
               className="w-full flex items-center px-4 py-3 text-slate-300 hover:bg-red-500/20 hover:text-red-400 rounded-xl transition-all duration-200"
@@ -104,7 +103,6 @@ const AdminLayout = () => {
               <LogOut size={20} className="mr-3" />
               Logout
             </button>
-            */}
           </div>
         </div>
       </div>

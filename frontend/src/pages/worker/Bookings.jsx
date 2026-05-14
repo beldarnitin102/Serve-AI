@@ -20,7 +20,7 @@ L.Icon.Default.mergeOptions({
 });
 
 const WorkerBookings = () => {
-  const [activeTab, setActiveTab] = useState('accepted');
+  const [activeTab, setActiveTab] = useState('pending');
   const [activeChat, setActiveChat] = useState(null);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -73,6 +73,8 @@ const WorkerBookings = () => {
     { id: 'completed', name: 'Completed', icon: CheckCircle },
   ];
 
+  const pendingRequests = bookings.filter(booking => booking.status === 'pending');
+
   const filteredBookings = bookings.filter(booking => {
     if (activeTab === 'active') return booking.status === 'in_progress';
     return booking.status === activeTab;
@@ -89,7 +91,7 @@ const WorkerBookings = () => {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold mb-2">My Operations</h1>
           <p className="text-slate-300">Track and manage your live service commitments.</p>
@@ -99,6 +101,27 @@ const WorkerBookings = () => {
           <span className="text-xs font-bold text-blue-400 uppercase tracking-tighter">Live Connection Sync</span>
         </div>
       </div>
+
+      {pendingRequests.length > 0 && (
+        <Card className="p-6 bg-slate-900/80 border border-blue-500/20">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-blue-400 font-black mb-2">New Requests</p>
+              <h2 className="text-2xl font-bold text-white">{pendingRequests.length} request{pendingRequests.length === 1 ? '' : 's'} waiting from users</h2>
+              <p className="text-slate-400 mt-2">Customers have sent service requests that appear in the Requests tab for your review.</p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              {pendingRequests.slice(0, 3).map((request) => (
+                <div key={request._id} className="rounded-3xl bg-blue-500/5 p-4 border border-blue-500/10">
+                  <p className="text-sm font-bold text-white capitalize">{request.service}</p>
+                  <p className="text-slate-400 text-xs mt-2 truncate max-w-[180px]">{request.location}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+      )}
 
       <div className="flex space-x-1 p-1 bg-white/5 rounded-xl w-fit border border-white/5">
         {tabs.map((tab) => {

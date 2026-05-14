@@ -57,6 +57,72 @@ const AvailableJobs = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const categories = ['all', 'Plumbing', 'Electrical', 'Cleaning', 'Carpentry', 'HVAC', 'Painting'];
 
+  const sampleServices = [
+    {
+      id: 'svc-1',
+      service: 'Plumbing',
+      description: 'Leak repairs, pipe installs, drain clearing and bathroom fixture service.',
+      location: 'Sector 12, Noida',
+      price: 420,
+      trustScore: 4.9,
+      category: 'Plumbing'
+    },
+    {
+      id: 'svc-2',
+      service: 'Electrical',
+      description: 'Wiring, switchboard, lighting, and troubleshooting for homes and offices.',
+      location: 'MG Road, Delhi',
+      price: 510,
+      trustScore: 4.8,
+      category: 'Electrical'
+    },
+    {
+      id: 'svc-3',
+      service: 'Cleaning',
+      description: 'Deep clean, sanitization, carpet shampoo and apartment refresh service.',
+      location: 'Koramangala, Bangalore',
+      price: 320,
+      trustScore: 4.7,
+      category: 'Cleaning'
+    },
+    {
+      id: 'svc-4',
+      service: 'Carpentry',
+      description: 'Furniture installs, cabinet repairs, shelving and custom woodwork.',
+      location: 'Bandra, Mumbai',
+      price: 650,
+      trustScore: 4.8,
+      category: 'Carpentry'
+    },
+    {
+      id: 'svc-5',
+      service: 'HVAC',
+      description: 'AC service, duct cleaning, thermostat setup and climate control maintenance.',
+      location: 'Whitefield, Bangalore',
+      price: 750,
+      trustScore: 4.9,
+      category: 'HVAC'
+    },
+    {
+      id: 'svc-6',
+      service: 'Painting',
+      description: 'Interior and exterior painting, texture finishes, and color consulting.',
+      location: 'MG Road, Pune',
+      price: 590,
+      trustScore: 4.6,
+      category: 'Painting'
+    },
+    {
+      id: 'svc-7',
+      service: 'Appliance Repair',
+      description: 'Repair and maintenance for refrigerators, washing machines, and ovens.',
+      location: 'Kothrud, Pune',
+      price: 480,
+      trustScore: 4.7,
+      category: 'Electrical'
+    },
+  ];
+
   const handleAcceptJob = async (jobId) => {
     setLoadingJobId(jobId);
     try {
@@ -150,6 +216,38 @@ const AvailableJobs = () => {
             >
               {cat}
             </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Service Categories</h2>
+            <p className="text-slate-400">Browse the most requested worker services in your area.</p>
+          </div>
+          <span className="text-xs uppercase tracking-[0.25em] text-slate-500 font-black">{selectedCategory === 'all' ? 'All services' : selectedCategory}</span>
+        </div>
+
+        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {sampleServices.filter(service => selectedCategory === 'all' || service.category === selectedCategory).map((service) => (
+            <Card key={service.id} className="p-6 border-white/10 bg-white/5 hover:border-blue-500/30 transition-all">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-xl font-black text-white">{service.service}</h3>
+                  <p className="text-slate-400 text-sm mt-1">{service.category}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-white">₹{service.price}</p>
+                  <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500 mt-1">Est.</p>
+                </div>
+              </div>
+              <p className="text-slate-300 text-sm leading-relaxed mb-5">{service.description}</p>
+              <div className="flex items-center justify-between text-slate-400 text-xs uppercase tracking-[0.25em] font-black">
+                <span>{service.location}</span>
+                <span>{service.trustScore} ★</span>
+              </div>
+            </Card>
           ))}
         </div>
       </div>

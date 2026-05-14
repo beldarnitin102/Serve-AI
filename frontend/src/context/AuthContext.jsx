@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { authAPI, workerAPI } from '../services/api';
+import { connectSocket, disconnectSocket } from '../sockets/socket';
 
 const AuthContext = createContext();
 
@@ -63,6 +64,22 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const socketConnected = useRef(false);
+
+  useEffect(() => {
+    const userId = state.user?._id || state.user?.id;
+    if (state.isAuthenticated && userId && !socketConnected.current) {
+      connectSocket({ userId, role: state.user.role });
+      socketConnected.current = true;
+    }
+  }, [state.isAuthenticated, state.user]);
+
+  useEffect(() => {
+    return () => {
+      disconnectSocket();
+    };
+  }, []);
+
   const login = async (email, password) => {
     try {
       const response = await authAPI.login({ email, password });
@@ -93,6 +110,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    disconnectSocket();
+    socketConnected.current = false;
     dispatch({ type: 'LOGOUT' });
   };
 

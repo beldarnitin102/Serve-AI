@@ -31,6 +31,11 @@ const WorkerLayout = () => {
 
   const location = useLocation();
 
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
   const navigation = [
     {
       name: "Dashboard",
@@ -167,7 +172,6 @@ const WorkerLayout = () => {
               </div>
             </div>
 
-            {/* Temporarily disabled Logout
             <button
               onClick={handleLogout}
               className="w-full flex items-center px-4 py-3 rounded-xl text-slate-300 hover:bg-red-500/20 hover:text-red-400 transition-all duration-200"
@@ -176,7 +180,6 @@ const WorkerLayout = () => {
 
               Logout
             </button>
-            */}
           </div>
         </div>
       </div>

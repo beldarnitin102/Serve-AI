@@ -4,13 +4,19 @@ const socket = io(import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://l
   autoConnect: false,
 });
 
-export const connectSocket = (userId) => {
-  socket.connect();
-  socket.emit('join', userId);
+export const connectSocket = ({ userId, role }) => {
+  if (!socket.connected) {
+    socket.connect();
+  }
+  if (userId) {
+    socket.emit('join', { userId, role });
+  }
 };
 
 export const disconnectSocket = () => {
-  socket.disconnect();
+  if (socket.connected) {
+    socket.disconnect();
+  }
 };
 
 export const subscribeToBookingUpdates = (callback) => {
