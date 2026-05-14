@@ -12,20 +12,18 @@ import workerRoutes from "./routes/workers.js";
 import adminRoutes from "./routes/admin.js";
 import aiRoutes from "./routes/ai.js";
 import emergencyRoutes from "./routes/emergency.js";
+import notificationRoutes from "./routes/notifications.js";
+import chatRoutes from "./routes/chat.js";
+
+import { initSocket } from './socket/socket.js';
 
 dotenv.config();
 
 const app = express();
-
 const server = createServer(app);
+const io = initSocket(server);
 
-const io = new Server(server, {
-  cors: {
-    origin: process.env.FRONTEND_URL,
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true,
-  },
-});
+app.set('io', io);
 
 // =======================
 // DATABASE
@@ -64,6 +62,8 @@ app.use("/api/workers", workerRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/emergency", emergencyRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/chat", chatRoutes);
 
 // =======================
 // AI CHAT ROUTE
@@ -117,36 +117,7 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-// =======================
-// SOCKET.IO
-// =======================
-io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
-
-  socket.on("join", (userId) => {
-    socket.join(userId);
-  });
-
-  socket.on("booking_update", (data) => {
-    io.to(data.userId).emit("booking_status_changed", data);
-
-    if (data.workerId) {
-      io.to(data.workerId).emit("new_booking", data);
-    }
-  });
-
-  socket.on("location_update", (data) => {
-    socket.to(data.bookingId).emit("worker_location", data);
-  });
-
-  socket.on("send_message", (data) => {
-    io.to(data.receiverId).emit("receive_message", data);
-  });
-
-  socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
-  });
-});
+// Socket logic is now handled in socket/socket.js
 
 // =======================
 // SERVER

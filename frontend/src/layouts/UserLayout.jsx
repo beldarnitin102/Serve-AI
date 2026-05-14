@@ -1,13 +1,11 @@
 import React, { useState } from "react";
-
 import {
   Outlet,
   useNavigate,
   useLocation,
 } from "react-router-dom";
-
 import { useAuth } from "../context/AuthContext";
-
+import NotificationCenter from "../components/NotificationCenter.jsx";
 import {
   Home,
   Calendar,
@@ -21,55 +19,18 @@ import {
 
 const UserLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
   const { user, logout } = useAuth();
-
   const navigate = useNavigate();
-
   const location = useLocation();
 
   const navigation = [
-    {
-      name: "Dashboard",
-      href: "/user/dashboard",
-      icon: Home,
-    },
-
-    {
-      name: "Book Service",
-      href: "/user/book",
-      icon: Calendar,
-    },
-
-    {
-      name: "My Bookings",
-      href: "/user/bookings",
-      icon: Calendar,
-    },
-
-    {
-      name: "Messages",
-      href: "/user/messages",
-      icon: MessageSquare,
-    },
-
-    {
-      name: "Notifications",
-      href: "/user/notifications",
-      icon: Bell,
-    },
-
-    {
-      name: "Profile",
-      href: "/user/profile",
-      icon: User,
-    },
-
-    {
-      name: "Settings",
-      href: "/user/settings",
-      icon: Settings,
-    },
+    { name: "Dashboard", href: "/user/dashboard", icon: Home },
+    { name: "Book Service", href: "/user/book", icon: Calendar },
+    { name: "My Bookings", href: "/user/bookings", icon: Calendar },
+    { name: "Messages", href: "/user/messages", icon: MessageSquare },
+    { name: "Notifications", href: "/user/notifications", icon: Bell },
+    { name: "Profile", href: "/user/profile", icon: User },
+    { name: "Settings", href: "/user/settings", icon: Settings },
   ];
 
   const handleLogout = () => {
@@ -105,9 +66,7 @@ const UserLayout = () => {
           <nav className="flex-1 px-4 py-6 space-y-2">
             {navigation.map((item) => {
               const Icon = item.icon;
-
               const isActive = location.pathname === item.href;
-
               return (
                 <button
                   key={item.name}
@@ -122,7 +81,6 @@ const UserLayout = () => {
                   }`}
                 >
                   <Icon size={20} className="mr-3" />
-
                   {item.name}
                 </button>
               );
@@ -135,34 +93,43 @@ const UserLayout = () => {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 flex items-center justify-center mr-3">
                 <User size={20} />
               </div>
-
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">
-                  {user?.name}
-                </p>
-
-                <p className="text-xs text-slate-400 truncate">
-                  {user?.email}
-                </p>
+                <p className="text-sm font-medium truncate">{user?.name}</p>
+                <p className="text-xs text-slate-400 truncate">{user?.email}</p>
               </div>
             </div>
-
-            {/* Temporarily disabled Logout
             <button
               onClick={handleLogout}
               className="w-full flex items-center px-4 py-3 rounded-xl text-slate-300 hover:bg-red-500/20 hover:text-red-400 transition-all duration-200"
             >
               <LogOut size={20} className="mr-3" />
-
               Logout
             </button>
-            */}
           </div>
         </div>
       </div>
 
       {/* Main */}
       <div className="lg:pl-64">
+        {/* Desktop Top Bar */}
+        <header className="hidden lg:flex items-center justify-between h-16 px-8 bg-slate-900/50 border-b border-white/10 backdrop-blur-md sticky top-0 z-30">
+          <div className="flex items-center gap-4">
+            <h2 className="text-sm font-medium text-slate-400 capitalize">
+              {location.pathname.split('/').pop()}
+            </h2>
+          </div>
+          <div className="flex items-center gap-4">
+            <NotificationCenter />
+            <div className="w-px h-6 bg-white/10 mx-2" />
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <p className="text-xs font-semibold">{user?.name}</p>
+                <p className="text-[10px] text-slate-500 capitalize">{user?.role}</p>
+              </div>
+            </div>
+          </div>
+        </header>
+
         {/* Mobile Header */}
         <div className="lg:hidden flex items-center justify-between h-16 px-4 bg-slate-900/95 border-b border-white/10">
           <button
@@ -171,12 +138,8 @@ const UserLayout = () => {
           >
             <Menu size={20} />
           </button>
-
-          <h1 className="text-xl font-semibold">
-            ServAI
-          </h1>
-
-          <div className="w-10" />
+          <h1 className="text-xl font-semibold">ServAI</h1>
+          <NotificationCenter />
         </div>
 
         {/* Content */}

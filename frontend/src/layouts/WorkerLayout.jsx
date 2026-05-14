@@ -19,6 +19,7 @@ import {
   MessageSquare,
   MapPin,
   Clock,
+  ShieldCheck,
 } from "lucide-react";
 
 const WorkerLayout = () => {
@@ -35,49 +36,66 @@ const WorkerLayout = () => {
       name: "Dashboard",
       href: "/worker/dashboard",
       icon: Home,
+      alwaysShow: true,
     },
 
     {
       name: "Available Jobs",
       href: "/worker/jobs",
       icon: Calendar,
+      alwaysShow: true,
     },
 
     {
       name: "My Bookings",
       href: "/worker/bookings",
       icon: Clock,
+      requiresVerification: true,
     },
 
     {
       name: "Location",
       href: "/worker/location",
       icon: MapPin,
+      requiresVerification: true,
     },
 
     {
       name: "Notifications",
       href: "/worker/notifications",
       icon: Bell,
+      requiresVerification: true,
     },
 
     {
       name: "Profile",
       href: "/worker/profile",
       icon: User,
+      alwaysShow: true,
+    },
+    {
+      name: "Verification",
+      href: "/worker/verification",
+      icon: ShieldCheck,
+      showWhenUnverified: true,
     },
 
     {
       name: "Settings",
       href: "/worker/settings",
       icon: Settings,
+      alwaysShow: true,
     },
   ];
 
-  const handleLogout = () => {
-    logout();
-    navigate("/");
-  };
+  const isVerified = user?.worker?.verification?.isVerified;
+
+  const filteredNavigation = navigation.filter((item) => {
+    if (item.alwaysShow) return true;
+    if (item.requiresVerification && !isVerified) return false;
+    if (item.showWhenUnverified && isVerified) return false;
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-[#071226] text-white">
@@ -105,7 +123,7 @@ const WorkerLayout = () => {
 
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-2">
-            {navigation.map((item) => {
+            {filteredNavigation.map((item) => {
               const Icon = item.icon;
 
               const isActive = location.pathname === item.href;

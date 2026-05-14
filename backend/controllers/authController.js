@@ -31,17 +31,32 @@ export const register = async (req, res) => {
 
     await user.save();
 
-    // If worker, create worker profile
+    let workerProfile = null;
+
     if (role === 'worker') {
-      const worker = new Worker({
+      workerProfile = await Worker.create({
         user: user._id,
         services: req.body.services || [],
-        hourlyRate: req.body.hourlyRate || 0
+        hourlyRate: req.body.hourlyRate || 250,
+        currentLocation: req.body.currentLocation || {},
+        profileMedia: {},
+        verification: {
+          isVerified: false,
+          trustRating: 0,
+          score: 0,
+          badge: 'Bronze'
+        },
+        trustFactors: {
+          punctuality: 3,
+          ratings: 4,
+          cancellations: 0,
+          complaints: 0,
+          verificationQuality: 4,
+          customerSentiment: 4
+        }
       });
-      await worker.save();
     }
 
-    // Generate token for auto-login
     const token = jwt.sign(
       { userId: user._id, role: user.role },
       process.env.JWT_SECRET || 'your-secret-key',
@@ -57,7 +72,8 @@ export const register = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        profileImage: user.profileImage
+        profileImage: user.profileImage,
+        worker: workerProfile
       }
     });
   } catch (error) {
@@ -112,6 +128,11 @@ export const login = async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    let workerProfile = null;
+    if (user.role === 'worker') {
+      workerProfile = await Worker.findOne({ user: user._id });
+    }
+
     res.json({
       success: true,
       token,
@@ -120,7 +141,8 @@ export const login = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        profileImage: user.profileImage
+        profileImage: user.profileImage,
+        worker: workerProfile
       }
     });
   } catch (error) {
@@ -135,7 +157,7 @@ export const getProfile = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    let profile = user.toObject();
+    const profile = user.toObject();
 
     if (user.role === 'worker') {
       const worker = await Worker.findOne({ user: user._id });

@@ -51,8 +51,14 @@ const bookingSchema = new mongoose.Schema({
   },
   paymentStatus: {
     type: String,
-    enum: ['pending', 'paid', 'refunded'],
+    enum: ['pending', 'paid', 'refunded', 'frozen'],
     default: 'pending'
+  },
+  guarantee: {
+    isClaimed: { type: Boolean, default: false },
+    claimedAt: Date,
+    reason: String,
+    status: { type: String, enum: ['none', 'pending', 'resolved'], default: 'none' }
   },
   aiRecommendations: {
     suggestedWorkers: [{

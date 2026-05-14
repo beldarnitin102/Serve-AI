@@ -39,6 +39,7 @@ import AvailableJobs from "../pages/worker/AvailableJobs";
 import WorkerLocation from "../pages/worker/Location";
 import WorkerNotifications from "../pages/worker/Notifications";
 import WorkerAssistant from "../pages/worker/Assistant";
+import WorkerVerification from "../pages/worker/Verification";
 
 // Admin Pages
 import AdminDashboard from "../pages/admin/Dashboard";
@@ -62,7 +63,9 @@ const DashboardRedirect = () => {
       return <Navigate to="/user/dashboard" replace />;
 
     case "worker":
-      return <Navigate to="/worker/dashboard" replace />;
+      return user?.worker?.verification?.isVerified 
+        ? <Navigate to="/worker/dashboard" replace /> 
+        : <Navigate to="/worker/verification" replace />;
 
     case "admin":
       return <Navigate to="/admin/dashboard" replace />;
@@ -121,6 +124,7 @@ const AppRoutes = () => {
               element={<WorkerNotifications />}
             />
             <Route path="profile" element={<WorkerProfile />} />
+            <Route path="verification" element={<WorkerVerification />} />
             <Route path="assistant" element={<WorkerAssistant />} />
             <Route path="settings" element={<WorkerSettings />} />
           </Route>

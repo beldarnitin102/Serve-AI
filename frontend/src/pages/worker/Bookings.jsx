@@ -1,286 +1,325 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
-import { Calendar, Clock, MapPin, Star, Users, Phone, MessageSquare, CheckCircle, XCircle } from 'lucide-react';
+import Modal from '../../components/Modal';
+import Chat from '../../components/Chat';
+import { useAuth } from '../../context/AuthContext';
+import { bookingAPI } from '../../services/api';
+import { subscribeToBookingUpdates, subscribeToNewBookings } from '../../sockets/socket';
+import { Calendar, Clock, MapPin, Star, User, Phone, MessageSquare, CheckCircle, XCircle, Navigation, Loader2 } from 'lucide-react';
+import 'leaflet/dist/leaflet.css';
+
+// Fix for default markers
+import L from 'leaflet';
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 const WorkerBookings = () => {
-  const [activeTab, setActiveTab] = useState('active');
+  const [activeTab, setActiveTab] = useState('accepted');
+  const [activeChat, setActiveChat] = useState(null);
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState(null);
 
-  // Mock data - in real app, fetch from API
-  const [bookings, setBookings] = useState([
-    {
-      id: 1,
-      service: 'Plumbing',
-      customer: {
-        name: 'John Smith',
-        rating: 4.8,
-        phone: '+1234567890',
-        image: null
-      },
-      date: '2024-01-20',
-      time: '10:00 AM',
-      location: '123 Main St, City',
-      status: 'in_progress',
-      amount: 150,
-      description: 'Leaking kitchen faucet repair',
-      customerNotes: 'Please bring your own tools. Parking available on street.',
-      estimatedDuration: '1-2 hours'
-    },
-    {
-      id: 2,
-      service: 'Electrical',
-      customer: {
-        name: 'Sarah Johnson',
-        rating: 4.9,
-        phone: '+1234567891',
-        image: null
-      },
-      date: '2024-01-18',
-      time: '2:00 PM',
-      location: '456 Oak Ave, City',
-      status: 'completed',
-      amount: 200,
-      description: 'Install new outlet in living room',
-      customerNotes: 'Outlet should be placed above the desk',
-      estimatedDuration: '2-3 hours',
-      actualDuration: '2.5 hours',
-      rating: 5,
-      review: 'Excellent work! Very professional and punctual.'
-    },
-    {
-      id: 3,
-      service: 'Cleaning',
-      customer: {
-        name: 'Mike Davis',
-        rating: 4.7,
-        phone: '+1234567892',
-        image: null
-      },
-      date: '2024-01-25',
-      time: '9:00 AM',
-      location: '789 Pine Rd, City',
-      status: 'scheduled',
-      amount: 120,
-      description: 'Deep house cleaning',
-      customerNotes: 'Focus on kitchen and bathrooms. All supplies provided.',
-      estimatedDuration: '3-4 hours'
-    },
-    {
-      id: 4,
-      service: 'Carpentry',
-      customer: {
-        name: 'Emma Wilson',
-        rating: 4.6,
-        phone: '+1234567893',
-        image: null
-      },
-      date: '2024-01-15',
-      time: '1:00 PM',
-      location: '321 Elm St, City',
-      status: 'cancelled',
-      amount: 180,
-      description: 'Repair broken cabinet door',
-      customerNotes: 'Customer cancelled due to change of plans',
-      estimatedDuration: '1-2 hours'
+  useEffect(() => {
+    fetchBookings();
+    
+    const cleanupStatus = subscribeToBookingUpdates(() => {
+      fetchBookings();
+    });
+
+    const cleanupNew = subscribeToNewBookings(() => {
+      fetchBookings();
+    });
+
+    return () => {
+      cleanupStatus();
+      cleanupNew();
+    };
+  }, []);
+
+  const fetchBookings = async () => {
+    try {
+      const response = await bookingAPI.getWorkerBookings();
+      setBookings(response.data);
+    } catch (error) {
+      console.error('Failed to fetch worker bookings');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  const handleUpdateStatus = async (id, status) => {
+    setUpdatingId(id);
+    try {
+      await bookingAPI.updateBookingStatus(id, status);
+      await fetchBookings();
+    } catch (error) {
+      alert('Failed to update status: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
   const tabs = [
-    { id: 'active', label: 'Active', count: bookings.filter(b => ['scheduled', 'in_progress'].includes(b.status)).length },
-    { id: 'completed', label: 'Completed', count: bookings.filter(b => b.status === 'completed').length },
-    { id: 'cancelled', label: 'Cancelled', count: bookings.filter(b => b.status === 'cancelled').length }
+    { id: 'pending', name: 'Requests', icon: Clock },
+    { id: 'accepted', name: 'Accepted', icon: Calendar },
+    { id: 'active', name: 'Active', icon: Navigation },
+    { id: 'completed', name: 'Completed', icon: CheckCircle },
   ];
 
-  const filteredBookings = activeTab === 'active'
-    ? bookings.filter(booking => ['scheduled', 'in_progress'].includes(booking.status))
-    : bookings.filter(booking => booking.status === activeTab);
+  const filteredBookings = bookings.filter(booking => {
+    if (activeTab === 'active') return booking.status === 'in_progress';
+    return booking.status === activeTab;
+  });
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'completed': return 'text-green-400 bg-green-500/10 border-green-500/20';
-      case 'in_progress': return 'text-blue-400 bg-blue-500/10 border-blue-500/20';
-      case 'scheduled': return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20';
-      case 'cancelled': return 'text-red-400 bg-red-500/10 border-red-500/20';
-      default: return 'text-slate-400 bg-slate-500/10 border-slate-500/20';
-    }
-  };
-
-  const formatStatus = (status) => {
-    return status.split('_').map(word =>
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
-  };
-
-  const handleCompleteJob = (bookingId) => {
-    // In real app, call API to complete job
-    alert('Job marked as completed! Customer will be notified.');
-    setBookings(bookings.map(booking =>
-      booking.id === bookingId
-        ? { ...booking, status: 'completed', actualDuration: '2 hours' }
-        : booking
-    ));
-  };
-
-  const handleContactCustomer = (phone) => {
-    window.location.href = `tel:${phone}`;
-  };
-
-  const handleStartJob = (bookingId) => {
-    // In real app, call API to start job
-    alert('Job started! Good luck!');
-    setBookings(bookings.map(booking =>
-      booking.id === bookingId
-        ? { ...booking, status: 'in_progress' }
-        : booking
-    ));
-  };
+  if (loading) {
+    return (
+      <div className="h-[60vh] flex flex-col items-center justify-center gap-4 text-slate-400">
+        <Loader2 size={40} className="animate-spin text-blue-500" />
+        <p className="font-medium animate-pulse">Loading Live Bookings...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">My Bookings</h1>
-        <p className="text-slate-300">
-          Manage your scheduled jobs and track your work history.
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">My Operations</h1>
+          <p className="text-slate-300">Track and manage your live service commitments.</p>
+        </div>
+        <div className="px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+          <span className="text-xs font-bold text-blue-400 uppercase tracking-tighter">Live Connection Sync</span>
+        </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex space-x-1 bg-white/5 p-1 rounded-xl">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all ${
-              activeTab === tab.id
-                ? 'bg-blue-500 text-white'
-                : 'text-slate-400 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            {tab.label} ({tab.count})
-          </button>
-        ))}
+      <div className="flex space-x-1 p-1 bg-white/5 rounded-xl w-fit border border-white/5">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                activeTab === tab.id
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Icon size={16} className="mr-2" />
+              {tab.name}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Bookings List */}
-      <div className="space-y-6">
+      <div className="grid gap-6">
         {filteredBookings.length === 0 ? (
-          <Card className="p-12 text-center">
-            <Calendar size={48} className="mx-auto text-slate-400 mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No bookings found</h3>
-            <p className="text-slate-400">
-              {activeTab === 'active'
-                ? "You don't have any active bookings."
-                : `No ${activeTab} bookings found.`
-              }
-            </p>
+          <Card className="p-16 text-center border-dashed border-2 border-white/5 bg-transparent">
+            <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-500">
+              <Calendar size={40} />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">No {activeTab} bookings</h3>
+            <p className="text-slate-400 max-w-xs mx-auto text-sm leading-relaxed">Your queue is currently clear in this category. New jobs will appear here in real-time.</p>
           </Card>
         ) : (
           filteredBookings.map((booking) => (
-            <Card key={booking.id} className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start space-x-4">
-                  <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-xl flex items-center justify-center">
-                    <Users size={32} className="text-white" />
+            <Card key={booking._id} className="p-6 hover:border-blue-500/30 transition-all group overflow-hidden relative">
+              {updatingId === booking._id && (
+                <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-[2px] z-10 flex items-center justify-center">
+                  <Loader2 size={32} className="animate-spin text-blue-500" />
+                </div>
+              )}
+              <div className="flex flex-col lg:flex-row gap-6">
+                <div className="flex-1 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-xl group-hover:scale-105 transition-transform">
+                        <Clock size={28} />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-black text-white capitalize">{booking.service}</h3>
+                        <p className="text-slate-500 text-[10px] uppercase font-bold tracking-widest mt-0.5">ID: {booking._id.slice(-8)}</p>
+                      </div>
+                    </div>
+                    <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm ${
+                      booking.status === 'in_progress' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                      booking.status === 'accepted' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                      booking.status === 'completed' ? 'bg-slate-500/10 text-slate-400 border-slate-500/20' :
+                      'bg-red-500/10 text-red-400 border-red-500/20'
+                    }`}>
+                      {booking.status.replace('_', ' ')}
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h3 className="text-xl font-semibold">{booking.service}</h3>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(booking.status)}`}>
-                        {formatStatus(booking.status)}
-                      </span>
+
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 p-5 rounded-2xl bg-white/[0.03] border border-white/5">
+                    <div className="flex items-start space-x-3">
+                      <User size={18} className="text-blue-400 mt-1" />
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase font-black mb-1">Customer</p>
+                        <p className="text-sm font-bold text-white">{booking.user?.name}</p>
+                        <div className="flex items-center text-yellow-400 text-xs mt-1">
+                          <Star size={12} className="mr-1 fill-yellow-400" />
+                          {booking.user?.trustScore || 4.5}
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center text-slate-300">
-                        <Users size={16} className="mr-2" />
-                        <span className="font-medium">{booking.customer.name}</span>
-                        <div className="flex items-center ml-4 text-yellow-400">
-                          <Star size={14} className="mr-1" />
-                          <span className="text-sm">{booking.customer.rating}</span>
-                        </div>
+                    <div className="flex items-start space-x-3">
+                      <Calendar size={18} className="text-blue-400 mt-1" />
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase font-black mb-1">Schedule</p>
+                        <p className="text-sm font-bold text-white">{new Date(booking.scheduledDate).toLocaleDateString()}</p>
+                        <p className="text-xs text-slate-400">{booking.scheduledTime}</p>
                       </div>
-
-                      <div className="flex items-center text-slate-400 text-sm">
-                        <Calendar size={14} className="mr-2" />
-                        {booking.date} at {booking.time}
-                      </div>
-
-                      <div className="flex items-center text-slate-400 text-sm">
-                        <MapPin size={14} className="mr-2" />
-                        {booking.location}
-                      </div>
-
-                      <div className="flex items-center text-slate-400 text-sm">
-                        <Clock size={14} className="mr-2" />
-                        Est. {booking.estimatedDuration}
-                        {booking.actualDuration && ` • Actual: ${booking.actualDuration}`}
-                      </div>
-
-                      <p className="text-slate-300 text-sm">{booking.description}</p>
-
-                      {booking.customerNotes && (
-                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mt-3">
-                          <p className="text-blue-400 text-sm font-medium mb-1">Customer Notes:</p>
-                          <p className="text-slate-300 text-sm">{booking.customerNotes}</p>
-                        </div>
-                      )}
-
-                      {booking.status === 'completed' && booking.review && (
-                        <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 mt-3">
-                          <div className="flex items-center mb-2">
-                            <Star size={16} className="text-yellow-400 mr-1" />
-                            <span className="text-green-400 text-sm font-medium">Customer Review: {booking.rating}/5</span>
-                          </div>
-                          <p className="text-slate-300 text-sm">"{booking.review}"</p>
-                        </div>
-                      )}
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex flex-wrap gap-3">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => handleContactCustomer(booking.customer.phone)}
-                      >
-                        <Phone size={16} className="mr-2" />
-                        Call
-                      </Button>
+                    <div className="flex items-start space-x-3">
+                      <MapPin size={18} className="text-blue-400 mt-1" />
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase font-black mb-1">Location</p>
+                        <p className="text-sm font-bold text-white truncate w-40">{booking.location}</p>
+                      </div>
+                    </div>
+                  </div>
 
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => alert('Chat functionality would open here')}
-                      >
-                        <MessageSquare size={16} className="mr-2" />
-                        Message
-                      </Button>
+                  <div className="bg-white/[0.01] p-4 rounded-xl border border-white/5">
+                    <p className="text-[10px] text-slate-500 uppercase font-black mb-2">Job Description</p>
+                    <p className="text-sm text-slate-300 leading-relaxed italic">"{booking.description}"</p>
+                  </div>
 
-                      {booking.status === 'scheduled' && (
-                        <Button
+                  <div className="flex flex-wrap gap-3 pt-2">
+                    {booking.status === 'pending' && (
+                      <Button 
+                        variant="primary" 
+                        size="sm"
+                        onClick={() => handleUpdateStatus(booking._id, 'accepted')}
+                      >
+                        <CheckCircle size={16} className="mr-2" />
+                        Accept Job
+                      </Button>
+                    )}
+
+                    {booking.status === 'accepted' && (
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="success" 
                           size="sm"
-                          onClick={() => handleStartJob(booking.id)}
+                          onClick={() => handleUpdateStatus(booking._id, 'in_progress')}
                         >
-                          Start Job
+                          <Navigation size={16} className="mr-2" />
+                          Start Journey
                         </Button>
-                      )}
-
-                      {booking.status === 'in_progress' && (
-                        <Button
+                        <Button 
+                          variant="secondary" 
                           size="sm"
-                          onClick={() => handleCompleteJob(booking.id)}
+                          className="bg-green-600/10 text-green-400 hover:bg-green-600/20 border-none"
+                          onClick={() => handleUpdateStatus(booking._id, 'completed')}
                         >
                           <CheckCircle size={16} className="mr-2" />
-                          Complete Job
+                          Mark Done
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {booking.status === 'in_progress' && (
+                      <Button 
+                        variant="success" 
+                        size="sm"
+                        onClick={() => handleUpdateStatus(booking._id, 'completed')}
+                      >
+                        <CheckCircle size={16} className="mr-2" />
+                        Complete Job
+                      </Button>
+                    )}
+
+                    {(booking.status === 'accepted' || booking.status === 'in_progress') && (
+                      <div className="w-full mt-4 rounded-2xl overflow-hidden border border-white/10 h-64 relative">
+                        <MapContainer
+                          center={[booking.coordinates?.lat || 28.6139, booking.coordinates?.lng || 77.2090]}
+                          zoom={12}
+                          style={{ height: '100%', width: '100%' }}
+                        >
+                          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                          
+                          {/* Destination (Customer) */}
+                          <Marker position={[booking.coordinates?.lat || 28.6139, booking.coordinates?.lng || 77.2090]}>
+                            <Popup>
+                              <div className="font-bold text-xs">Destination: {booking.user?.name}</div>
+                            </Popup>
+                          </Marker>
+
+                          {/* Live Origin (Worker) */}
+                          <Marker position={[28.62, 77.22]}> {/* Demo live location offset */}
+                            <Popup>
+                              <div className="font-bold text-blue-600 text-xs">You (Live)</div>
+                            </Popup>
+                          </Marker>
+                        </MapContainer>
+                        <div className="absolute top-2 right-2 z-[1000] px-3 py-1 bg-blue-600 text-white text-[10px] font-black rounded-full shadow-lg">
+                          LIVE NAVIGATION
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex gap-3 w-full">
+                      <Button 
+                        variant="secondary" 
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => setActiveChat({
+                          bookingId: booking._id,
+                          receiverId: booking.user?._id,
+                          receiverName: booking.user?.name
+                        })}
+                      >
+                        <MessageSquare size={16} className="mr-2" />
+                        Live Chat
+                      </Button>
+                      
+                      {booking.status === 'in_progress' && (
+                        <Button variant="secondary" size="sm" className="bg-red-500/10 text-red-400 hover:bg-red-500/20 border-none">
+                          SOS
                         </Button>
                       )}
                     </div>
                   </div>
                 </div>
 
-                <div className="text-right">
-                  <div className="text-2xl font-bold">${booking.amount}</div>
-                  <div className="text-slate-400 text-sm mt-1">Earnings</div>
+                <div className="lg:w-48 flex flex-col justify-between items-end lg:border-l border-white/10 lg:pl-6">
+                  <div className="text-right">
+                    <p className="text-[10px] text-slate-500 uppercase font-black mb-1">Contract Value</p>
+                    <p className="text-3xl font-black text-white">₹{booking.price?.total || 450}</p>
+                    {booking.paymentStatus === 'frozen' && (
+                      <div className="mt-2 px-3 py-1 bg-red-500/20 text-red-400 text-[10px] font-bold rounded-full border border-red-500/30 uppercase tracking-widest">
+                        Payment Frozen
+                      </div>
+                    )}
+                    {booking.guarantee?.isClaimed && (
+                      <div className="mt-2 px-3 py-1 bg-orange-500/20 text-orange-400 text-[10px] font-bold rounded-full border border-orange-500/30 uppercase tracking-widest">
+                        Guarantee Claimed
+                      </div>
+                    )}
+                    {booking.priority === 'emergency' && (
+                      <div className="mt-2 px-2 py-0.5 bg-red-500/20 text-red-400 text-[10px] font-bold rounded uppercase tracking-tighter inline-block">
+                        Emergency Premium
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="text-right mt-6">
+                    <div className="text-[10px] text-slate-500 font-bold mb-2">Platform AI Match</div>
+                    <div className="w-32 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-full bg-blue-500 rounded-full" style={{ width: '92%' }} />
+                    </div>
+                  </div>
                 </div>
               </div>
             </Card>
@@ -288,45 +327,19 @@ const WorkerBookings = () => {
         )}
       </div>
 
-      {/* Earnings Summary */}
-      {activeTab === 'completed' && (
-        <Card className="p-6">
-          <h3 className="text-xl font-semibold mb-6">Earnings Summary</h3>
-
-          <div className="grid md:grid-cols-4 gap-6">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-green-400 mb-2">
-                ${filteredBookings.reduce((sum, booking) => sum + booking.amount, 0)}
-              </div>
-              <div className="text-slate-400 text-sm">Total Earnings</div>
-            </div>
-
-            <div className="text-center">
-              <div className="text-3xl font-bold text-blue-400 mb-2">
-                {filteredBookings.length}
-              </div>
-              <div className="text-slate-400 text-sm">Jobs Completed</div>
-            </div>
-
-            <div className="text-center">
-              <div className="text-3xl font-bold text-yellow-400 mb-2">
-                {filteredBookings.length > 0
-                  ? (filteredBookings.reduce((sum, booking) => sum + (booking.rating || 0), 0) / filteredBookings.filter(b => b.rating).length).toFixed(1)
-                  : '0.0'
-                }
-              </div>
-              <div className="text-slate-400 text-sm">Average Rating</div>
-            </div>
-
-            <div className="text-center">
-              <div className="text-3xl font-bold text-purple-400 mb-2">
-                ${filteredBookings.length > 0 ? Math.round(filteredBookings.reduce((sum, booking) => sum + booking.amount, 0) / filteredBookings.length) : 0}
-              </div>
-              <div className="text-slate-400 text-sm">Average per Job</div>
-            </div>
-          </div>
-        </Card>
-      )}
+      <Modal
+        isOpen={!!activeChat}
+        onClose={() => setActiveChat(null)}
+        title={`Chat with ${activeChat?.receiverName}`}
+      >
+        {activeChat && (
+          <Chat 
+            bookingId={activeChat.bookingId}
+            receiverId={activeChat.receiverId}
+            receiverName={activeChat.receiverName}
+          />
+        )}
+      </Modal>
     </div>
   );
 };

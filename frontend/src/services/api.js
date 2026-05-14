@@ -45,7 +45,8 @@ export const authAPI = {
 
 // Chat API
 export const chatAPI = {
-  sendMessage: (message) => api.post('/chat', { message }),
+  getMessages: (bookingId) => api.get(`/chat/${bookingId}`),
+  sendMessage: (data) => api.post('/chat', data),
 };
 
 // Booking API
@@ -55,16 +56,20 @@ export const bookingAPI = {
   getWorkerBookings: () => api.get('/bookings/worker'),
   updateBookingStatus: (id, status) => api.put(`/bookings/${id}/status`, { status }),
   getBookingById: (id) => api.get(`/bookings/${id}`),
+  claimGuarantee: (id, reason) => api.post(`/bookings/${id}/claim-guarantee`, { reason }),
+  submitReview: (id, data) => api.post(`/bookings/${id}/review`, data),
 };
 
 // Worker API
 export const workerAPI = {
-  getAvailableWorkers: (service, location) => api.get('/workers/available', { params: { service, location } }),
+  getAvailableWorkers: (service, location) => api.get('/workers/available-workers', { params: { service, location } }),
   updateLocation: (location) => api.put('/workers/location', location),
   updateAvailability: (availability) => api.put('/workers/availability', availability),
   getWorkerProfile: () => api.get('/workers/profile'),
   updateWorkerProfile: (data) => api.put('/workers/profile', data),
   verifyProfile: (formData) => api.post('/workers/verify-profile', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  getAvailableJobs: () => api.get('/workers/available-jobs'),
+  acceptJob: (jobId) => api.post(`/workers/accept/${jobId}`),
   startService: (data) => api.post('/workers/start-service', data),
   completeService: (data) => api.post('/workers/complete-service', data),
   getAssistant: () => api.get('/workers/assistant')
@@ -87,7 +92,7 @@ export const adminAPI = {
 
 // Notification API
 export const notificationAPI = {
-  getNotifications: () => api.get('/notifications'),
+  getAll: () => api.get('/notifications'),
   markAsRead: (id) => api.put(`/notifications/${id}/read`),
   markAllAsRead: () => api.put('/notifications/read-all'),
 };

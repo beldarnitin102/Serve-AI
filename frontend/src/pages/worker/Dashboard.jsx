@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
-import { Calendar, DollarSign, Star, Users, MapPin, Clock, TrendingUp } from 'lucide-react';
+import Modal from '../../components/Modal';
+import { Calendar, DollarSign, Star, Users, MapPin, Clock, TrendingUp, User } from 'lucide-react';
+import { subscribeToNewBookings } from '../../sockets/socket';
+import { bookingAPI } from '../../services/api';
 
 const WorkerDashboard = () => {
   const [stats, setStats] = useState({
@@ -12,71 +17,58 @@ const WorkerDashboard = () => {
     rating: 0,
     responseTime: 0
   });
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [recentJobs, setRecentJobs] = useState([
-    {
-      id: 1,
-      service: 'Plumbing',
-      customer: 'John Doe',
-      location: '123 Main St',
-      time: '2:00 PM',
-      status: 'in_progress',
-      amount: 150
-    },
-    {
-      id: 2,
-      service: 'Electrical',
-      customer: 'Jane Smith',
-      location: '456 Oak Ave',
-      time: '4:30 PM',
-      status: 'scheduled',
-      amount: 200
-    }
-  ]);
-
-  const [availableJobs, setAvailableJobs] = useState([
-    {
-      id: 3,
-      service: 'Cleaning',
-      customer: 'Bob Johnson',
-      location: '789 Pine Rd',
-      time: 'Tomorrow 9:00 AM',
-      amount: 120,
-      distance: 2.3,
-      urgency: 'normal'
-    },
-    {
-      id: 4,
-      service: 'Carpentry',
-      customer: 'Alice Brown',
-      location: '321 Elm St',
-      time: 'Tomorrow 2:00 PM',
-      amount: 180,
-      distance: 4.1,
-      urgency: 'high'
-    }
-  ]);
-
-  // Mock data loading
   useEffect(() => {
-    setStats({
-      todayEarnings: 320,
-      totalEarnings: 15420,
-      completedJobs: 87,
-      activeJobs: 2,
-      rating: 4.8,
-      responseTime: 15
+    fetchDashboardData();
+    
+    // Subscribe to real-time updates
+    const cleanup = subscribeToNewBookings(() => {
+      fetchDashboardData();
     });
+    
+    return () => cleanup();
   }, []);
 
-  const handleAcceptJob = (jobId) => {
-    // In real app, call API to accept job
-    alert('Job accepted! Customer will be notified.');
-    setAvailableJobs(availableJobs.filter(job => job.id !== jobId));
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const response = await bookingAPI.getWorkerBookings();
+      const allBookings = response.data;
+      setBookings(allBookings);
+
+      // Real-time stat calculation
+      const completed = allBookings.filter(b => b.status === 'completed');
+      const active = allBookings.filter(b => b.status === 'in_progress');
+      const today = completed.filter(b => 
+        new Date(b.updatedAt).toDateString() === new Date().toDateString()
+      );
+
+      const totalEarnings = completed.reduce((sum, b) => sum + (b.price?.total || 0), 0);
+      const todayEarnings = today.reduce((sum, b) => sum + (b.price?.total || 0), 0);
+
+      setStats({
+        todayEarnings,
+        totalEarnings,
+        completedJobs: completed.length,
+        activeJobs: active.length,
+        rating: user?.worker?.rating || 4.8,
+        responseTime: 15
+      });
+    } catch (error) {
+      console.error('Dashboard sync failed:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const recentJobs = bookings.filter(b => ['in_progress', 'accepted', 'scheduled'].includes(b.status));
+  const availableJobs = bookings.filter(b => b.status === 'pending');
+
   const handleDeclineJob = (jobId) => {
-    // In real app, call API to decline job
     setAvailableJobs(availableJobs.filter(job => job.id !== jobId));
   };
 
@@ -97,12 +89,26 @@ const WorkerDashboard = () => {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Worker Dashboard</h1>
-        <p className="text-slate-300">
-          Manage your jobs, track earnings, and grow your business.
-        </p>
-      </div>
+      {/* New Request Alert */}
+      {availableJobs.length > 0 && (
+        <div className="p-6 bg-blue-600 rounded-3xl shadow-[0_0_50px_rgba(37,99,235,0.3)] flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+              <Calendar size={24} className="text-white animate-bounce" />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-white">New Service Request!</h3>
+              <p className="text-blue-100 text-sm">You have {availableJobs.length} new booking request(s) waiting for review.</p>
+            </div>
+          </div>
+          <Button 
+            onClick={() => navigate('/worker/bookings')} 
+            className="bg-white text-blue-600 hover:bg-blue-50 px-8 py-3 rounded-2xl font-black shadow-lg"
+          >
+            Review in My Bookings
+          </Button>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -155,7 +161,7 @@ const WorkerDashboard = () => {
         </Card>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-8">
+      <div className="grid gap-8">
         {/* Current Jobs */}
         <Card className="p-6">
           <h3 className="text-xl font-semibold mb-6">Current Jobs</h3>
@@ -168,9 +174,9 @@ const WorkerDashboard = () => {
           ) : (
             <div className="space-y-4">
               {recentJobs.map((job) => (
-                <div key={job.id} className="p-4 bg-white/5 rounded-xl border border-white/10">
+                <div key={job._id} className="p-4 bg-white/5 rounded-xl border border-white/10">
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-semibold">{job.service}</h4>
+                    <h4 className="font-semibold capitalize">{job.service}</h4>
                     <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(job.status)}`}>
                       {formatStatus(job.status)}
                     </span>
@@ -178,8 +184,8 @@ const WorkerDashboard = () => {
 
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center text-slate-300 text-sm">
-                      <Users size={14} className="mr-2" />
-                      {job.customer}
+                      <User size={14} className="mr-2" />
+                      {job.user?.name}
                     </div>
                     <div className="flex items-center text-slate-400 text-sm">
                       <MapPin size={14} className="mr-2" />
@@ -187,85 +193,21 @@ const WorkerDashboard = () => {
                     </div>
                     <div className="flex items-center text-slate-400 text-sm">
                       <Clock size={14} className="mr-2" />
-                      {job.time}
+                      {new Date(job.scheduledDate).toLocaleDateString()} at {job.scheduledTime}
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <div className="text-xl font-bold">${job.amount}</div>
+                    <div className="text-xl font-bold">₹{job.price?.total}</div>
                     <div className="flex space-x-2">
-                      <Button size="sm" variant="secondary">
+                      <Button size="sm" variant="secondary" onClick={() => navigate('/worker/bookings')}>
                         View Details
                       </Button>
                       {job.status === 'in_progress' && (
-                        <Button size="sm">
+                        <Button size="sm" onClick={() => navigate('/worker/bookings')}>
                           Complete Job
                         </Button>
                       )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-
-        {/* Available Jobs */}
-        <Card className="p-6">
-          <h3 className="text-xl font-semibold mb-6">Available Jobs</h3>
-
-          {availableJobs.length === 0 ? (
-            <div className="text-center py-8">
-              <Users size={48} className="mx-auto text-slate-400 mb-4" />
-              <p className="text-slate-400">No new jobs available right now</p>
-              <p className="text-slate-500 text-sm mt-2">Check back later or enable notifications</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {availableJobs.map((job) => (
-                <div key={job.id} className="p-4 bg-white/5 rounded-xl border border-white/10">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-semibold">{job.service}</h4>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${
-                      job.urgency === 'high'
-                        ? 'text-red-400 bg-red-500/10 border-red-500/20'
-                        : 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20'
-                    }`}>
-                      {job.urgency === 'high' ? 'Urgent' : 'Normal'}
-                    </span>
-                  </div>
-
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center text-slate-300 text-sm">
-                      <Users size={14} className="mr-2" />
-                      {job.customer}
-                    </div>
-                    <div className="flex items-center text-slate-400 text-sm">
-                      <MapPin size={14} className="mr-2" />
-                      {job.location} ({job.distance} km away)
-                    </div>
-                    <div className="flex items-center text-slate-400 text-sm">
-                      <Clock size={14} className="mr-2" />
-                      {job.time}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="text-xl font-bold">${job.amount}</div>
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => handleDeclineJob(job.id)}
-                      >
-                        Decline
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleAcceptJob(job.id)}
-                      >
-                        Accept
-                      </Button>
                     </div>
                   </div>
                 </div>
@@ -302,6 +244,8 @@ const WorkerDashboard = () => {
           </Button>
         </div>
       </Card>
+
+      {/* Verification Modal Removed */}
     </div>
   );
 };

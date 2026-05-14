@@ -33,6 +33,11 @@ export const subscribeToMessages = (callback) => {
   return () => socket.off('receive_message', callback);
 };
 
+export const subscribeToNotifications = (callback) => {
+  socket.on('new_notification', callback);
+  return () => socket.off('new_notification', callback);
+};
+
 export const emitBookingUpdate = (data) => {
   socket.emit('booking_update', data);
 };

@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 const notificationSchema = new mongoose.Schema({
-  user: {
+  recipient: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
@@ -16,35 +16,21 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['booking', 'payment', 'review', 'emergency', 'system', 'promotion'],
-    required: true
+    enum: ['new_booking', 'booking_update', 'payment', 'system', 'verification', 'alert'],
+    default: 'system'
   },
-  priority: {
-    type: String,
-    enum: ['low', 'medium', 'high', 'urgent'],
-    default: 'medium'
-  },
-  data: {
-    bookingId: mongoose.Schema.Types.ObjectId,
-    workerId: mongoose.Schema.Types.ObjectId,
-    amount: Number
-  },
-  channels: {
-    inApp: { type: Boolean, default: true },
-    email: { type: Boolean, default: false },
-    sms: { type: Boolean, default: false },
-    push: { type: Boolean, default: false }
+  link: {
+    type: String // URL to navigate to when clicked
   },
   isRead: {
     type: Boolean,
     default: false
   },
-  readAt: Date,
-  expiresAt: Date,
   createdAt: {
     type: Date,
     default: Date.now
   }
 });
 
-export default mongoose.model('Notification', notificationSchema);
+const Notification = mongoose.model('Notification', notificationSchema);
+export default Notification;

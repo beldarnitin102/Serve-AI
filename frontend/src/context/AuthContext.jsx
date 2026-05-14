@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { authAPI } from '../services/api';
+import { authAPI, workerAPI } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -106,14 +106,26 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateWorkerProfile = async (updates) => {
+    try {
+      const response = await workerAPI.updateWorkerProfile(updates);
+      dispatch({ type: 'UPDATE_PROFILE', payload: { worker: response.data } });
+      return { success: true };
+    } catch (error) {
+      return { success: false, message: error.response?.data?.message || 'Worker update failed' };
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       ...state,
+      dispatch,
       login,
       register,
       verifyOTP,
       logout,
-      updateProfile
+      updateProfile,
+      updateWorkerProfile
     }}>
       {children}
     </AuthContext.Provider>

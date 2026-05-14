@@ -16,7 +16,6 @@ import {
 
 const Home = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useAuth();
 
   const features = [
     {
@@ -50,21 +49,42 @@ const Home = () => {
     { name: 'AC Repair', icon: '❄️' }
   ];
 
+  const { dispatch } = useAuth();
+
   const handleGetStarted = () => {
-    // TEMPORARY: Redirect to user dashboard directly
-    navigate('/user/dashboard');
-    /*
-    if (isAuthenticated) {
-      const dashboardRoutes = {
-        user: '/user/dashboard',
-        worker: '/worker/dashboard',
-        admin: '/admin/dashboard'
-      };
-      navigate(dashboardRoutes[user?.role] || '/login');
-    } else {
-      navigate('/register');
+    // For Hackathon Demo: Bypass login and setup a professional worker profile
+    const dummyUser = {
+      _id: '65a1b2c3d4e5f6a7b8c9d000',
+      name: 'Nitin Beldar',
+      email: 'nitin@servai.com',
+      role: 'worker',
+      phone: '+91 9876543210',
+      address: {
+        street: 'Sector 4, Vashi',
+        city: 'Navi Mumbai',
+        state: 'Maharashtra',
+        zipCode: '400703'
+      },
+      worker: {
+        _id: '65a1b2c3d4e5f6a7b8c9d999',
+        verification: { 
+          isVerified: false, 
+          trustRating: 0, 
+          badge: 'Bronze',
+          report: 'Profile awaiting AI verification.'
+        },
+        experience: 5,
+        services: ['Plumbing', 'Electrical'],
+        hourlyRate: 500,
+        completedJobs: 124,
+        rating: 4.9
+      }
+    };
+
+    if (dispatch) {
+      dispatch({ type: 'SET_USER', payload: dummyUser });
     }
-    */
+    navigate('/worker/dashboard');
   };
 
   return (
