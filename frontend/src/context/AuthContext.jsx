@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import axios from 'axios';
+import { authAPI } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -25,6 +25,13 @@ const authReducer = (state, action) => {
       };
     case 'SET_LOADING':
       return { ...state, loading: action.payload };
+    case 'SET_USER':
+      return {
+        ...state,
+        user: action.payload,
+        isAuthenticated: true,
+        loading: false
+      };
     case 'UPDATE_PROFILE':
       return { ...state, user: { ...state.user, ...action.payload } };
     default:
@@ -33,69 +40,32 @@ const authReducer = (state, action) => {
 };
 
 export const AuthProvider = ({ children }) => {
-  // TEMPORARY: Mocked state for hackathon/testing
-  const [state, dispatch] = useReducer(authReducer, {
-    user: { 
-      _id: 'mock-id',
-      name: 'Guest User',
-      email: 'guest@example.com',
-      role: 'user' 
-    },
-    token: 'mock-token',
-    isAuthenticated: true,
-    loading: false
-  });
-
-  /* Commented out real auth logic for temporary bypass
   const [state, dispatch] = useReducer(authReducer, {
     user: null,
     token: localStorage.getItem('token'),
     isAuthenticated: false,
     loading: true
   });
-  */
 
-  // Set axios default header
   useEffect(() => {
-    if (state.token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${state.token}`;
-    } else {
-      delete axios.defaults.headers.common['Authorization'];
-    }
-  }, [state.token]);
-
-  // Check if user is logged in on app start
-  useEffect(() => {
-    // TEMPORARY: Skip auth check
-    console.log("Auth check skipped - temporary bypass active");
-    
-    /*
-    const checkAuth = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-          const response = await axios.get('/api/auth/profile');
-          dispatch({
-            type: 'LOGIN',
-            payload: { user: response.data, token }
-          });
-        } catch (error) {
+    const token = localStorage.getItem('token');
+    if (token) {
+      authAPI.getProfile()
+        .then((response) => {
+          dispatch({ type: 'SET_USER', payload: response.data });
+        })
+        .catch(() => {
           localStorage.removeItem('token');
           dispatch({ type: 'LOGOUT' });
-        }
-      } else {
-        dispatch({ type: 'SET_LOADING', payload: false });
-      }
-    };
-
-    checkAuth();
-    */
+        });
+    } else {
+      dispatch({ type: 'SET_LOADING', payload: false });
+    }
   }, []);
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post('/api/auth/login', { email, password });
+      const response = await authAPI.login({ email, password });
       dispatch({ type: 'LOGIN', payload: response.data });
       return { success: true };
     } catch (error) {
@@ -105,7 +75,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      const response = await axios.post('/api/auth/register', userData);
+      const response = await authAPI.register(userData);
       dispatch({ type: 'LOGIN', payload: response.data });
       return { success: true };
     } catch (error) {
@@ -115,7 +85,7 @@ export const AuthProvider = ({ children }) => {
 
   const verifyOTP = async (userId, otp) => {
     try {
-      await axios.post('/api/auth/verify-otp', { userId, otp });
+      await authAPI.verifyOTP({ userId, otp });
       return { success: true };
     } catch (error) {
       return { success: false, message: error.response?.data?.message || 'Verification failed' };
@@ -128,7 +98,7 @@ export const AuthProvider = ({ children }) => {
 
   const updateProfile = async (updates) => {
     try {
-      const response = await axios.put('/api/auth/profile', updates);
+      const response = await authAPI.updateProfile(updates);
       dispatch({ type: 'UPDATE_PROFILE', payload: response.data });
       return { success: true };
     } catch (error) {

@@ -7,6 +7,11 @@ import axios from "axios";
 
 import connectDB from "./config/database.js";
 import authRoutes from "./routes/auth.js";
+import bookingRoutes from "./routes/bookings.js";
+import workerRoutes from "./routes/workers.js";
+import adminRoutes from "./routes/admin.js";
+import aiRoutes from "./routes/ai.js";
+import emergencyRoutes from "./routes/emergency.js";
 
 dotenv.config();
 
@@ -54,6 +59,11 @@ app.get("/", (req, res) => {
 // AUTH ROUTES
 // =======================
 app.use("/api/auth", authRoutes);
+app.use("/api/bookings", bookingRoutes);
+app.use("/api/workers", workerRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/ai", aiRoutes);
+app.use("/api/emergency", emergencyRoutes);
 
 // =======================
 // AI CHAT ROUTE

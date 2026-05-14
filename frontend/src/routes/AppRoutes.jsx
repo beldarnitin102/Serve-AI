@@ -1,5 +1,4 @@
 import {
-  BrowserRouter,
   Routes,
   Route,
   Navigate,
@@ -18,6 +17,7 @@ import Home from "../pages/Home";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 import VerifyOTP from "../pages/VerifyOTP";
+import AIChat from "../pages/AIChat";
 
 // User Pages
 import UserDashboard from "../pages/user/Dashboard";
@@ -27,6 +27,8 @@ import UserSettings from "../pages/user/Settings";
 import BookService from "../pages/user/BookService";
 import UserMessages from "../pages/user/Messages";
 import UserNotifications from "../pages/user/Notifications";
+import UserEmergency from "../pages/user/Emergency";
+import UserFavorites from "../pages/user/Favorites";
 
 // Worker Pages
 import WorkerDashboard from "../pages/worker/Dashboard";
@@ -36,6 +38,7 @@ import WorkerSettings from "../pages/worker/Settings";
 import AvailableJobs from "../pages/worker/AvailableJobs";
 import WorkerLocation from "../pages/worker/Location";
 import WorkerNotifications from "../pages/worker/Notifications";
+import WorkerAssistant from "../pages/worker/Assistant";
 
 // Admin Pages
 import AdminDashboard from "../pages/admin/Dashboard";
@@ -71,16 +74,14 @@ const DashboardRedirect = () => {
 
 const AppRoutes = () => {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Routes>
+    <AuthProvider>
+      <Routes>
           {/* PUBLIC */}
           <Route path="/" element={<Home />} />
-          {/* Temporarily disabled auth routes
+          <Route path="/chat" element={<AIChat />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/verify-otp" element={<VerifyOTP />} />
-          */}
 
           {/* USER */}
           <Route
@@ -98,6 +99,8 @@ const AppRoutes = () => {
             <Route path="notifications" element={<UserNotifications />} />
             <Route path="profile" element={<UserProfile />} />
             <Route path="settings" element={<UserSettings />} />
+            <Route path="emergency" element={<UserEmergency />} />
+            <Route path="favorites" element={<UserFavorites />} />
           </Route>
 
           {/* WORKER */}
@@ -118,6 +121,7 @@ const AppRoutes = () => {
               element={<WorkerNotifications />}
             />
             <Route path="profile" element={<WorkerProfile />} />
+            <Route path="assistant" element={<WorkerAssistant />} />
             <Route path="settings" element={<WorkerSettings />} />
           </Route>
 
@@ -147,7 +151,6 @@ const AppRoutes = () => {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
-    </BrowserRouter>
   );
 };
 

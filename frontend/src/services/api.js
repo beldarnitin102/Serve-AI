@@ -64,6 +64,15 @@ export const workerAPI = {
   updateAvailability: (availability) => api.put('/workers/availability', availability),
   getWorkerProfile: () => api.get('/workers/profile'),
   updateWorkerProfile: (data) => api.put('/workers/profile', data),
+  verifyProfile: (formData) => api.post('/workers/verify-profile', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  startService: (data) => api.post('/workers/start-service', data),
+  completeService: (data) => api.post('/workers/complete-service', data),
+  getAssistant: () => api.get('/workers/assistant')
+};
+
+// Emergency API
+export const emergencyAPI = {
+  sendSOS: (data) => api.post('/emergency/sos', data)
 };
 
 // Admin API

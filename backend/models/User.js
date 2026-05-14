@@ -62,6 +62,22 @@ const userSchema = new mongoose.Schema({
     },
     language: { type: String, default: 'en' }
   },
+  emergencyContacts: [{
+    name: String,
+    phone: String,
+    relation: String
+  }],
+  trustProfile: {
+    score: {
+      type: Number,
+      default: 100
+    },
+    badge: {
+      type: String,
+      default: 'Bronze'
+    },
+    details: String
+  },
   createdAt: {
     type: Date,
     default: Date.now

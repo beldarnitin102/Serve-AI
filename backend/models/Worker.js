@@ -14,6 +14,60 @@ const workerSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  profileMedia: {
+    aadhaar: String,
+    pan: String,
+    certificates: [String],
+    profileImage: String,
+    introVideo: String,
+    demoVideo: String
+  },
+  verification: {
+    isVerified: {
+      type: Boolean,
+      default: false
+    },
+    trustRating: {
+      type: Number,
+      default: 0
+    },
+    score: {
+      type: Number,
+      default: 0
+    },
+    badge: {
+      type: String,
+      default: 'Bronze'
+    },
+    report: String,
+    lastVerifiedAt: Date
+  },
+  trustFactors: {
+    punctuality: {
+      type: Number,
+      default: 3
+    },
+    ratings: {
+      type: Number,
+      default: 4
+    },
+    cancellations: {
+      type: Number,
+      default: 0
+    },
+    complaints: {
+      type: Number,
+      default: 0
+    },
+    verificationQuality: {
+      type: Number,
+      default: 4
+    },
+    customerSentiment: {
+      type: Number,
+      default: 4
+    }
+  },
   certifications: [{
     name: String,
     issuer: String,
