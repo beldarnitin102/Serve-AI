@@ -1,38 +1,47 @@
-import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
 
-export const authenticate = async (req, res, next) => {
+// REMOVED: import {authenticate} from ".../"; 
+// (This was causing the "already been declared" error)
+
+const authenticate = async (req, res, next) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    const authHeader = req.headers.authorization;
 
-    if (!token) {
-      return res.status(401).json({ message: 'Access denied. No token provided.' });
+    // Check token exists
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        message: "No token provided",
+      });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    const user = await User.findById(decoded.userId);
+    // Extract token
+    const token = authHeader.split(" ")[1];
+
+    // Verify token
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
+
+    // Find user
+    const user = await User.findById(decoded.userId).select("-password");
 
     if (!user) {
-      return res.status(401).json({ message: 'Invalid token.' });
+      return res.status(401).json({
+        message: "User not found",
+      });
     }
 
+    // Attach user to request
     req.user = user;
+
     next();
   } catch (error) {
-    res.status(401).json({ message: 'Invalid token.' });
+    return res.status(401).json({
+      message: "Invalid token",
+    });
   }
 };
 
-export const authorize = (...roles) => {
-  return (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({ message: 'Authentication required.' });
-    }
-
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
-    }
-
-    next();
-  };
-};
+export default authenticate;

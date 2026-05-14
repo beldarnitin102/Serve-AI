@@ -25,7 +25,8 @@ export const register = async (req, res) => {
       password: hashedPassword,
       phone,
       role,
-      address
+      address,
+      isVerified: true // Set to true by default for now
     });
 
     await user.save();
@@ -40,23 +41,27 @@ export const register = async (req, res) => {
       await worker.save();
     }
 
-    // Generate OTP for verification
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    user.otp = {
-      code: otp,
-      expiresAt: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
-    };
-    await user.save();
-
-    // Send OTP email
-    await sendOTP(email, otp);
+    // Generate token for auto-login
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' }
+    );
 
     res.status(201).json({
-      message: 'User registered successfully. Please verify your email.',
-      userId: user._id
+      success: true,
+      message: 'User registered successfully!',
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        profileImage: user.profileImage
+      }
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -77,9 +82,9 @@ export const verifyOTP = async (req, res) => {
     user.otp = undefined;
     await user.save();
 
-    res.json({ message: 'Email verified successfully' });
+    res.json({ success: true, message: 'Email verified successfully' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -98,7 +103,7 @@ export const login = async (req, res) => {
     }
 
     if (!user.isVerified) {
-      return res.status(401).json({ message: 'Please verify your email first' });
+      return res.status(401).json({ success: false, message: 'Please verify your email first' });
     }
 
     const token = jwt.sign(
@@ -108,6 +113,7 @@ export const login = async (req, res) => {
     );
 
     res.json({
+      success: true,
       token,
       user: {
         id: user._id,
@@ -118,7 +124,7 @@ export const login = async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 

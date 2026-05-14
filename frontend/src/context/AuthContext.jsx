@@ -33,12 +33,27 @@ const authReducer = (state, action) => {
 };
 
 export const AuthProvider = ({ children }) => {
+  // TEMPORARY: Mocked state for hackathon/testing
+  const [state, dispatch] = useReducer(authReducer, {
+    user: { 
+      _id: 'mock-id',
+      name: 'Guest User',
+      email: 'guest@example.com',
+      role: 'user' 
+    },
+    token: 'mock-token',
+    isAuthenticated: true,
+    loading: false
+  });
+
+  /* Commented out real auth logic for temporary bypass
   const [state, dispatch] = useReducer(authReducer, {
     user: null,
     token: localStorage.getItem('token'),
     isAuthenticated: false,
     loading: true
   });
+  */
 
   // Set axios default header
   useEffect(() => {
@@ -51,6 +66,10 @@ export const AuthProvider = ({ children }) => {
 
   // Check if user is logged in on app start
   useEffect(() => {
+    // TEMPORARY: Skip auth check
+    console.log("Auth check skipped - temporary bypass active");
+    
+    /*
     const checkAuth = async () => {
       const token = localStorage.getItem('token');
       if (token) {
@@ -71,6 +90,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     checkAuth();
+    */
   }, []);
 
   const login = async (email, password) => {
@@ -86,7 +106,8 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       const response = await axios.post('/api/auth/register', userData);
-      return { success: true, userId: response.data.userId };
+      dispatch({ type: 'LOGIN', payload: response.data });
+      return { success: true };
     } catch (error) {
       return { success: false, message: error.response?.data?.message || 'Registration failed' };
     }

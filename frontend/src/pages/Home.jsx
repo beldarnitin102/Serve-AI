@@ -51,6 +51,9 @@ const Home = () => {
   ];
 
   const handleGetStarted = () => {
+    // TEMPORARY: Redirect to user dashboard directly
+    navigate('/user/dashboard');
+    /*
     if (isAuthenticated) {
       const dashboardRoutes = {
         user: '/user/dashboard',
@@ -61,6 +64,7 @@ const Home = () => {
     } else {
       navigate('/register');
     }
+    */
   };
 
   return (
@@ -96,9 +100,10 @@ const Home = () => {
                 onClick={handleGetStarted}
                 className="px-8 py-4 text-lg"
               >
-                {isAuthenticated ? 'Go to Dashboard' : 'Get Started'}
+                Get Started
                 <ArrowRight size={20} className="ml-2" />
               </Button>
+              {/* Temporarily removed Sign In button
               {!isAuthenticated && (
                 <Button
                   variant="secondary"
@@ -109,6 +114,7 @@ const Home = () => {
                   Sign In
                 </Button>
               )}
+              */}
             </div>
           </div>
         </div>
@@ -198,7 +204,7 @@ const Home = () => {
             onClick={handleGetStarted}
             className="px-8 py-4 text-lg"
           >
-            {isAuthenticated ? 'Go to Dashboard' : 'Start Your Journey'}
+            Start Your Journey
             <ArrowRight size={20} className="ml-2" />
           </Button>
         </div>

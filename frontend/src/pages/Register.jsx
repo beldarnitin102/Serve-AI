@@ -63,8 +63,7 @@ const Register = () => {
     });
 
     if (result.success) {
-      setUserId(result.userId);
-      setShowOTPModal(true);
+      navigate('/dashboard');
     } else {
       setError(result.message);
     }

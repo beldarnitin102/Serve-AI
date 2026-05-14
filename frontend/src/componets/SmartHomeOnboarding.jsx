@@ -78,7 +78,7 @@ export default function SmartHomeOnboarding() {
 
             {/* Features */}
             <div className="mt-10 space-y-4 text-left">
-              {features.map((feature,index) => (
+              {features.map((feature) => (
                 <div
                   key={feature}
                   className="flex items-center gap-4 px-4 py-3 rounded-2xl bg-white shadow-sm border border-[#edf1f7] hover:shadow-lg hover:-translate-y-1 transition-all duration-300"

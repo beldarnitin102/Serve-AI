@@ -1,16 +1,11 @@
-//import AIChatDashboard from "./componets/AIChatDashboard"
-//import Home from "./componets/Home"
-import AppRoutes from "./routes/AppRoutes"
-//import CategoriesPage from "./pages/CategoriesPage"
-//import MobileNavbar from "./componets/MobileNavbar"
-//import SmartHomeOnboarding from "./componets/SmartHomeOnboarding"
+import AppRoutes from "./routes/AppRoutes";
 
 const App = () => {
   return (
     <div>
-      <AppRoutes/>
+      <AppRoutes />
     </div>
-  )
-}
+  );
+};
 
-export default App
+export default App;

@@ -3,39 +3,70 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { createServer } from "http";
 import { Server } from "socket.io";
+import axios from "axios";
+
 import connectDB from "./config/database.js";
 import authRoutes from "./routes/auth.js";
 
 dotenv.config();
 
 const app = express();
+
 const server = createServer(app);
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    methods: ["GET", "POST"]
-  }
+    origin: process.env.FRONTEND_URL,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  },
 });
 
+// =======================
+// DATABASE
+// =======================
 connectDB();
 
-app.use(cors());
-app.use(express.json());
+// =======================
+// MIDDLEWARE
+// =======================
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
+  })
+);
 
-// Routes
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// =======================
+// TEST ROUTE
+// =======================
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "ServAI Backend Running Successfully",
+  });
+});
+
+// =======================
+// AUTH ROUTES
+// =======================
 app.use("/api/auth", authRoutes);
 
-// Existing chat route
+// =======================
+// AI CHAT ROUTE
+// =======================
 app.post("/api/chat", async (req, res) => {
   try {
     const { message } = req.body;
 
-    console.log("USER MESSAGE:", message);
-
-    console.log(
-      "API KEY EXISTS:",
-      !!process.env.GROQ_API_KEY
-    );
+    if (!message) {
+      return res.status(400).json({
+        error: "Message is required",
+      });
+    }
 
     const response = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
@@ -46,7 +77,7 @@ app.post("/api/chat", async (req, res) => {
           {
             role: "system",
             content:
-              "You are a helpful AI assistant for ServAI, a smart urban home services platform. Help users with booking services, answering questions about available services, and providing information about workers and pricing.",
+              "You are a helpful AI assistant for ServAI, a smart urban home services platform.",
           },
           {
             role: "user",
@@ -64,58 +95,54 @@ app.post("/api/chat", async (req, res) => {
       }
     );
 
-    console.log("AI SUCCESS");
-
     res.json({
-      reply:
-        response.data.choices[0].message.content,
+      reply: response.data.choices[0].message.content,
     });
   } catch (error) {
-    console.log("===== ERROR =====");
-
-    console.log(error.response?.data);
+    console.log("AI ERROR:", error.response?.data || error.message);
 
     res.status(500).json({
-      error:
-        error.response?.data || error.message,
+      error: error.response?.data || error.message,
     });
   }
 });
 
-// Socket.io for real-time features
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
+// =======================
+// SOCKET.IO
+// =======================
+io.on("connection", (socket) => {
+  console.log("User connected:", socket.id);
 
-  // Join user room
-  socket.on('join', (userId) => {
+  socket.on("join", (userId) => {
     socket.join(userId);
   });
 
-  // Handle booking updates
-  socket.on('booking_update', (data) => {
-    io.to(data.userId).emit('booking_status_changed', data);
+  socket.on("booking_update", (data) => {
+    io.to(data.userId).emit("booking_status_changed", data);
+
     if (data.workerId) {
-      io.to(data.workerId).emit('new_booking', data);
+      io.to(data.workerId).emit("new_booking", data);
     }
   });
 
-  // Handle location updates
-  socket.on('location_update', (data) => {
-    socket.to(data.bookingId).emit('worker_location', data);
+  socket.on("location_update", (data) => {
+    socket.to(data.bookingId).emit("worker_location", data);
   });
 
-  // Handle chat messages
-  socket.on('send_message', (data) => {
-    io.to(data.receiverId).emit('receive_message', data);
+  socket.on("send_message", (data) => {
+    io.to(data.receiverId).emit("receive_message", data);
   });
 
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
   });
 });
 
+// =======================
+// SERVER
+// =======================
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });
