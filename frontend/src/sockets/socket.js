@@ -1,0 +1,48 @@
+import { io } from 'socket.io-client';
+
+const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:5000', {
+  autoConnect: false,
+});
+
+export const connectSocket = (userId) => {
+  socket.connect();
+  socket.emit('join', userId);
+};
+
+export const disconnectSocket = () => {
+  socket.disconnect();
+};
+
+export const subscribeToBookingUpdates = (callback) => {
+  socket.on('booking_status_changed', callback);
+  return () => socket.off('booking_status_changed', callback);
+};
+
+export const subscribeToNewBookings = (callback) => {
+  socket.on('new_booking', callback);
+  return () => socket.off('new_booking', callback);
+};
+
+export const subscribeToWorkerLocation = (callback) => {
+  socket.on('worker_location', callback);
+  return () => socket.off('worker_location', callback);
+};
+
+export const subscribeToMessages = (callback) => {
+  socket.on('receive_message', callback);
+  return () => socket.off('receive_message', callback);
+};
+
+export const emitBookingUpdate = (data) => {
+  socket.emit('booking_update', data);
+};
+
+export const emitLocationUpdate = (data) => {
+  socket.emit('location_update', data);
+};
+
+export const emitMessage = (data) => {
+  socket.emit('send_message', data);
+};
+
+export default socket;
