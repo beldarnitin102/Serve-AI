@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
+import { bookingAPI } from '../../services/api';
 import {
   Calendar,
   Clock,
@@ -12,6 +13,7 @@ import {
   Users,
   CheckCircle,
   AlertCircle,
+  ShieldCheck,
   Plus
 } from 'lucide-react';
 
@@ -19,34 +21,57 @@ const UserDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Mock data - in real app, fetch from API
   const [stats, setStats] = useState({
-    totalBookings: 12,
-    completedBookings: 10,
-    activeBookings: 1,
-    totalSpent: 2450
+    totalBookings: 0,
+    completedBookings: 0,
+    activeBookings: 0,
+    totalSpent: 0
   });
+  const [guaranteeSummary, setGuaranteeSummary] = useState({
+    eligibleClaims: 0,
+    frozenPayments: 0
+  });
+  const [recentBookings, setRecentBookings] = useState([]);
 
-  const [recentBookings, setRecentBookings] = useState([
-    {
-      id: 1,
-      service: 'Plumbing',
-      worker: 'John Smith',
-      date: '2024-01-15',
-      time: '14:00',
-      status: 'completed',
-      amount: 150
-    },
-    {
-      id: 2,
-      service: 'Electrical',
-      worker: 'Mike Johnson',
-      date: '2024-01-20',
-      time: '10:00',
-      status: 'in_progress',
-      amount: 200
-    }
-  ]);
+  useEffect(() => {
+    const loadDashboard = async () => {
+      try {
+        const response = await bookingAPI.getUserBookings();
+        const bookings = response.data || [];
+
+        const totalBookings = bookings.length;
+        const completedBookings = bookings.filter(b => b.status === 'completed').length;
+        const activeBookings = bookings.filter(b => ['accepted', 'in_progress', 'scheduled'].includes(b.status)).length;
+        const totalSpent = bookings.reduce((sum, b) => sum + (b.price?.total || 0), 0);
+
+        const eligibleClaims = bookings.filter((b) => {
+          if (b.status !== 'completed' || b.guarantee?.isClaimed) return false;
+          const completedAt = b.tracking?.completedAt;
+          if (!completedAt) return false;
+          return (Date.now() - new Date(completedAt).getTime()) < 24 * 60 * 60 * 1000;
+        }).length;
+
+        const frozenPayments = bookings.filter(b => b.paymentStatus === 'frozen').length;
+
+        setStats({ totalBookings, completedBookings, activeBookings, totalSpent });
+        setGuaranteeSummary({ eligibleClaims, frozenPayments });
+
+        setRecentBookings(bookings.slice(-3).reverse().map((booking) => ({
+          id: booking._id,
+          service: booking.service,
+          worker: booking.worker?.user?.name || 'Professional',
+          date: new Date(booking.scheduledDate).toLocaleDateString(),
+          time: booking.scheduledTime,
+          status: booking.status,
+          amount: booking.price?.total || 0
+        })));
+      } catch (error) {
+        console.error('Failed to load dashboard data', error);
+      }
+    };
+
+    loadDashboard();
+  }, []);
 
   const quickActions = [
     {
@@ -158,6 +183,25 @@ const UserDashboard = () => {
         </Card>
       </div>
 
+      <Card className="p-6 bg-amber-500/10 border border-amber-500/20">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-amber-200">Service Guarantee</h2>
+            <p className="text-slate-300 text-sm mt-1">Track your 24-hour claim window and frozen payment status here.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
+            <div className="p-4 bg-white/5 rounded-3xl border border-white/10">
+              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Claims Available</p>
+              <p className="text-3xl font-black text-amber-300">{guaranteeSummary.eligibleClaims}</p>
+            </div>
+            <div className="p-4 bg-white/5 rounded-3xl border border-white/10">
+              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Payments Frozen</p>
+              <p className="text-3xl font-black text-amber-300">{guaranteeSummary.frozenPayments}</p>
+            </div>
+          </div>
+        </div>
+      </Card>
+
       {/* Quick Actions */}
       <div>
         <h2 className="text-2xl font-bold mb-6">Quick Actions</h2>
@@ -209,7 +253,7 @@ const UserDashboard = () => {
                       </div>
                       <div className="flex items-center text-slate-400 text-sm">
                         <Clock size={14} className="mr-1" />
-                        {booking.time}
+                        {booking.time?.start || booking.time}
                       </div>
                     </div>
                   </div>

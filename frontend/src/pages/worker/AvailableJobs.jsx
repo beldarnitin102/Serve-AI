@@ -144,7 +144,7 @@ const AvailableJobs = () => {
   const filteredJobs = jobs.filter(job => {
     const matchesSearch = job.service.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         job.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        job.location.toLowerCase().includes(searchTerm.toLowerCase());
+                        (typeof job.location === 'object' ? job.location?.address : job.location)?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || job.service === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -294,7 +294,7 @@ const AvailableJobs = () => {
                       <MapPin size={18} className="text-blue-400 mt-1" />
                       <div>
                         <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Service Location</p>
-                        <p className="text-sm font-bold text-white leading-tight">{job.location}</p>
+                        <p className="text-sm font-bold text-white leading-tight">{typeof job.location === 'object' ? job.location?.address : job.location}</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3 z-10">

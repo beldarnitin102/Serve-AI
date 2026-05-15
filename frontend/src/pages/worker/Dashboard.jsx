@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import Modal from '../../components/Modal';
-import { Calendar, DollarSign, Star, Users, MapPin, Clock, TrendingUp, User } from 'lucide-react';
+import { Calendar, DollarSign, Star, Users, MapPin, Clock, TrendingUp, User, ShieldCheck } from 'lucide-react';
 import { subscribeToNewBookings } from '../../sockets/socket';
 import { bookingAPI } from '../../services/api';
 
@@ -15,7 +15,9 @@ const WorkerDashboard = () => {
     completedJobs: 0,
     activeJobs: 0,
     rating: 0,
-    responseTime: 0
+    responseTime: 0,
+    guaranteeClaims: 0,
+    frozenPayments: 0
   });
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -49,6 +51,8 @@ const WorkerDashboard = () => {
 
       const totalEarnings = completed.reduce((sum, b) => sum + (b.price?.total || 0), 0);
       const todayEarnings = today.reduce((sum, b) => sum + (b.price?.total || 0), 0);
+      const guaranteeClaims = allBookings.filter(b => b.guarantee?.isClaimed && b.guarantee.status === 'pending').length;
+      const frozenPayments = allBookings.filter(b => b.paymentStatus === 'frozen').length;
 
       setStats({
         todayEarnings,
@@ -56,7 +60,9 @@ const WorkerDashboard = () => {
         completedJobs: completed.length,
         activeJobs: active.length,
         rating: user?.worker?.rating || 4.8,
-        responseTime: 15
+        responseTime: 15,
+        guaranteeClaims,
+        frozenPayments
       });
     } catch (error) {
       console.error('Dashboard sync failed:', error);
@@ -159,6 +165,30 @@ const WorkerDashboard = () => {
             </div>
           </div>
         </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center">
+              <ShieldCheck size={24} className="text-amber-400" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold">{stats.guaranteeClaims}</div>
+              <div className="text-slate-400 text-sm">Guarantee Claims</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center">
+              <ShieldCheck size={24} className="text-red-400" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold">{stats.frozenPayments}</div>
+              <div className="text-slate-400 text-sm">Payments Frozen</div>
+            </div>
+          </div>
+        </Card>
       </div>
 
       <div className="grid gap-8">
@@ -189,11 +219,11 @@ const WorkerDashboard = () => {
                     </div>
                     <div className="flex items-center text-slate-400 text-sm">
                       <MapPin size={14} className="mr-2" />
-                      {job.location}
+                      {typeof job.location === 'object' ? job.location?.address : job.location}
                     </div>
                     <div className="flex items-center text-slate-400 text-sm">
                       <Clock size={14} className="mr-2" />
-                      {new Date(job.scheduledDate).toLocaleDateString()} at {job.scheduledTime}
+                      {new Date(job.scheduledDate).toLocaleDateString()} at {job.scheduledTime?.start || job.scheduledTime}
                     </div>
                   </div>
 

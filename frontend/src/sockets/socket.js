@@ -4,16 +4,36 @@ const socket = io(import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://l
   autoConnect: false,
 });
 
+let pendingJoinData = null;
+
+socket.on('connect', () => {
+  console.log('Socket connected:', socket.id);
+  if (pendingJoinData) {
+    socket.emit('join', pendingJoinData);
+  }
+});
+
+socket.on('disconnect', (reason) => {
+  console.log('Socket disconnected:', reason);
+});
+
+socket.on('connect_error', (error) => {
+  console.error('Socket connect error:', error);
+});
+
 export const connectSocket = ({ userId, role }) => {
+  const joinData = { userId, role };
+  pendingJoinData = joinData;
+
   if (!socket.connected) {
     socket.connect();
-  }
-  if (userId) {
-    socket.emit('join', { userId, role });
+  } else if (userId) {
+    socket.emit('join', joinData);
   }
 };
 
 export const disconnectSocket = () => {
+  pendingJoinData = null;
   if (socket.connected) {
     socket.disconnect();
   }
@@ -21,7 +41,11 @@ export const disconnectSocket = () => {
 
 export const subscribeToBookingUpdates = (callback) => {
   socket.on('booking_status_changed', callback);
-  return () => socket.off('booking_status_changed', callback);
+  socket.on('booking_update', callback);
+  return () => {
+    socket.off('booking_status_changed', callback);
+    socket.off('booking_update', callback);
+  };
 };
 
 export const subscribeToNewBookings = (callback) => {

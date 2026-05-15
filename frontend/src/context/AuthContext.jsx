@@ -71,14 +71,11 @@ export const AuthProvider = ({ children }) => {
     if (state.isAuthenticated && userId && !socketConnected.current) {
       connectSocket({ userId, role: state.user.role });
       socketConnected.current = true;
+    } else if (!state.isAuthenticated && socketConnected.current) {
+      disconnectSocket();
+      socketConnected.current = false;
     }
   }, [state.isAuthenticated, state.user]);
-
-  useEffect(() => {
-    return () => {
-      disconnectSocket();
-    };
-  }, []);
 
   const login = async (email, password) => {
     try {

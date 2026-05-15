@@ -21,8 +21,8 @@ export const createBooking = async (req, res) => {
       service,
       description,
       scheduledDate: new Date(scheduledDate),
-      scheduledTime,
-      location,
+      scheduledTime: { start: scheduledTime, end: '' },
+      location: { address: location, coordinates: { lat: 28.6139, lng: 77.2090 } },
       priority: priority || 'normal',
       price: {
         base: worker.hourlyRate || 200,
@@ -46,7 +46,16 @@ export const createBooking = async (req, res) => {
         link: `/worker/jobs`
       });
 
-      io.to(worker.user.toString()).emit('new_booking', {
+      const workerRoom = worker.user._id ? worker.user._id.toString() : worker.user.toString();
+      io.to(workerRoom).emit('new_booking', {
+        bookingId: booking._id,
+        service: booking.service,
+        customerName: req.user.name,
+        location: booking.location,
+        priority: booking.priority,
+        message: 'You have a new service request!'
+      });
+      io.to('workers').emit('new_booking', {
         bookingId: booking._id,
         service: booking.service,
         customerName: req.user.name,
@@ -79,10 +88,22 @@ export const getWorkerBookings = async (req, res) => {
     if (!worker) {
       return res.status(404).json({ message: 'Worker profile not found' });
     }
-    const bookings = await Booking.find({ worker: worker._id })
+
+    // Get the 3 most recent GLOBALLY pending requests
+    // (not filtered by workerId so new bookings always appear instantly)
+    const pendingBookings = await Booking.find({ status: 'pending' })
       .populate({ path: 'worker', populate: { path: 'user', select: 'name email profileImage' } })
-      .populate('user', 'name email profileImage');
-    res.json(bookings);
+      .populate('user', 'name email profileImage')
+      .sort({ createdAt: -1 })
+      .limit(3);
+
+    // Get all non-pending bookings for THIS specific worker
+    const otherBookings = await Booking.find({ worker: worker._id, status: { $ne: 'pending' } })
+      .populate({ path: 'worker', populate: { path: 'user', select: 'name email profileImage' } })
+      .populate('user', 'name email profileImage')
+      .sort({ createdAt: -1 });
+
+    res.json([...pendingBookings, ...otherBookings]);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -132,8 +153,13 @@ export const updateBookingStatus = async (req, res) => {
       return res.status(403).json({ message: 'Access denied - Not the owner' });
     }
 
-    if (req.user.role === 'worker' && !isWorkerAssigned) {
-      return res.status(403).json({ message: 'Access denied - Not assigned to this job' });
+    if (req.user.role === 'worker') {
+      if (booking.status === 'pending' && status === 'accepted') {
+        // Automatic takeover: reassign the booking to the real worker who clicked Accept
+        booking.worker = worker._id;
+      } else if (!isWorkerAssigned) {
+        return res.status(403).json({ message: 'Access denied - Not assigned to this job' });
+      }
     }
 
     if (req.user.role === 'worker' && !worker.verification.isVerified && false && ['accepted', 'in_progress'].includes(status)) {
@@ -167,6 +193,7 @@ export const updateBookingStatus = async (req, res) => {
       }
     }
     if (status === 'completed') {
+      if (!booking.tracking) booking.tracking = {};
       booking.tracking.completedAt = new Date();
       booking.paymentStatus = 'paid';
       
@@ -190,8 +217,9 @@ export const updateBookingStatus = async (req, res) => {
         await worker.save();
       }
     }
-    if (status === 'in_progress' && !booking.tracking.startedAt) {
-      booking.tracking.startedAt = new Date();
+    if (status === 'in_progress') {
+      if (!booking.tracking) booking.tracking = {};
+      if (!booking.tracking.startedAt) booking.tracking.startedAt = new Date();
     }
 
     await booking.save();
@@ -273,13 +301,15 @@ export const claimGuarantee = async (req, res) => {
         bookingId: booking._id
       });
       
-      // Emit booking update for real-time dashboard refresh
-      emitToUser(worker.user._id.toString(), 'booking_update', {
+      // Emit booking updates for real-time dashboard refresh
+      const updatePayload = {
         bookingId: booking._id,
         status: booking.status,
         paymentStatus: booking.paymentStatus,
         guarantee: booking.guarantee
-      });
+      };
+      emitToUser(worker.user._id.toString(), 'booking_update', updatePayload);
+      emitToUser(worker.user._id.toString(), 'booking_status_changed', updatePayload);
     }
 
     res.json({ message: 'Guarantee claimed. Payment has been frozen.', booking });
